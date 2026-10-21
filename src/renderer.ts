@@ -321,7 +321,8 @@ function renderDotGrid(
   width: number,
   height: number,
   pan: { x: number; y: number },
-  zoom: number
+  zoom: number,
+  isDark = false
 ) {
   let step = 20 * zoom;
   while (step < 12) step *= 2;
@@ -330,7 +331,7 @@ function renderDotGrid(
   const offsetX = ((pan.x % step) + step) % step;
   const offsetY = ((pan.y % step) + step) % step;
 
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+  ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.12)';
 
   for (let x = offsetX; x < width; x += step) {
     for (let y = offsetY; y < height; y += step) {
@@ -367,11 +368,11 @@ export function renderCanvas(
   // Background color
   ctx.save();
   ctx.scale(dpr, dpr);
-  ctx.fillStyle = '#f8f9fa';
+  ctx.fillStyle = appState.isDarkMode ? '#121212' : '#f8f9fa';
   ctx.fillRect(0, 0, width, height);
 
   // Dot grid in screen space
-  renderDotGrid(ctx, width, height, appState.pan, appState.zoom);
+  renderDotGrid(ctx, width, height, appState.pan, appState.zoom, !!appState.isDarkMode);
   ctx.restore();
 
   // Transform to canvas coordinates for elements
@@ -399,6 +400,12 @@ export function renderCanvas(
     if (element.isDeleted || element.type !== 'box') continue;
     const norm = normalizeBox(element);
     const options = getRoughOptions(element);
+
+    // Adjust black stroke in dark mode if needed
+    if (appState.isDarkMode && options.stroke === '#1e1e1e') {
+      options.stroke = '#f1f5f9';
+    }
+
     rc.rectangle(norm.x, norm.y, norm.width, norm.height, options);
 
     // If currently editing this element, don't render its text on canvas
@@ -411,6 +418,27 @@ export function renderCanvas(
   for (const element of allElements) {
     if (element.isDeleted || element.type !== 'arrow') continue;
     renderArrow(rc, ctx, element, elementsMap);
+  }
+
+  // 2.5 Highlight hovered box during arrow connection or mouseover
+  if (extra?.hoveredBoxId) {
+    const hoveredBox = allElements.find(
+      (el) => el.id === extra.hoveredBoxId && el.type === 'box'
+    ) as BoxElement | undefined;
+    if (hoveredBox) {
+      const norm = normalizeBox(hoveredBox);
+      ctx.save();
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2 / appState.zoom;
+      ctx.setLineDash([4 / appState.zoom, 4 / appState.zoom]);
+      ctx.strokeRect(
+        norm.x - 3 / appState.zoom,
+        norm.y - 3 / appState.zoom,
+        norm.width + 6 / appState.zoom,
+        norm.height + 6 / appState.zoom
+      );
+      ctx.restore();
+    }
   }
 
   // 3. Draw anchor points on boxes if drawing arrow or hovering near box edges

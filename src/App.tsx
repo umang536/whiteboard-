@@ -12,6 +12,7 @@ import { Toolbar } from './components/Toolbar';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Canvas } from './components/Canvas';
 import { exportToPNG } from './renderer';
+import { generateId } from './geometry';
 import { Check } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'excalidraw_clone_elements_v1';
@@ -75,6 +76,27 @@ const INITIAL_ELEMENTS: ExcalidrawElement[] = [
 ];
 
 export const App: React.FC = () => {
+  // Dark mode
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('excalidraw_theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const handleToggleDarkMode = useCallback(() => {
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('excalidraw_theme', next ? 'dark' : 'light');
+      return next;
+    });
+  }, []);
+
   // Load elements from LocalStorage or use initial
   const [elements, setElements] = useState<ExcalidrawElement[]>(() => {
     try {
@@ -106,6 +128,7 @@ export const App: React.FC = () => {
     selectedElementIds: [],
     tool: 'select',
     editingElementId: null,
+    isDarkMode: isDarkMode,
     defaultStrokeColor: '#1e1e1e',
     defaultBackgroundColor: '#a5d8ff',
     defaultFillStyle: 'hachure',
@@ -114,6 +137,11 @@ export const App: React.FC = () => {
     defaultRoughness: 1,
     defaultFontSize: 20,
   });
+
+  // Sync isDarkMode with AppState
+  useEffect(() => {
+    setAppState((prev) => ({ ...prev, isDarkMode }));
+  }, [isDarkMode]);
 
   // Save to localStorage whenever elements change
   useEffect(() => {
@@ -168,6 +196,61 @@ export const App: React.FC = () => {
     }
   }, [historyIndex, history]);
 
+  // Duplicate selected elements (Ctrl+D)
+  const handleDuplicateSelected = useCallback(() => {
+    if (appState.selectedElementIds.length === 0) return;
+
+    const idMap = new Map<string, string>();
+    const newElements: ExcalidrawElement[] = [];
+
+    // First pass: generate new IDs
+    for (const id of appState.selectedElementIds) {
+      idMap.set(id, generateId());
+    }
+
+    for (const el of elements) {
+      if (appState.selectedElementIds.includes(el.id)) {
+        const newId = idMap.get(el.id)!;
+        if (el.type === 'box') {
+          newElements.push({
+            ...el,
+            id: newId,
+            x: el.x + 24,
+            y: el.y + 24,
+            seed: Math.floor(Math.random() * 100000),
+          });
+        } else if (el.type === 'arrow') {
+          newElements.push({
+            ...el,
+            id: newId,
+            startX: el.startX + 24,
+            startY: el.startY + 24,
+            endX: el.endX + 24,
+            endY: el.endY + 24,
+            startBinding:
+              el.startBinding && idMap.has(el.startBinding.elementId)
+                ? { elementId: idMap.get(el.startBinding.elementId)! }
+                : el.startBinding,
+            endBinding:
+              el.endBinding && idMap.has(el.endBinding.elementId)
+                ? { elementId: idMap.get(el.endBinding.elementId)! }
+                : el.endBinding,
+            seed: Math.floor(Math.random() * 100000),
+          });
+        }
+      }
+    }
+
+    if (newElements.length > 0) {
+      const nextElements = [...elements, ...newElements];
+      updateElementsWithHistory(nextElements);
+      setAppState((prev) => ({
+        ...prev,
+        selectedElementIds: newElements.map((el) => el.id),
+      }));
+    }
+  }, [appState.selectedElementIds, elements, updateElementsWithHistory]);
+
   // Delete selected elements
   const handleDeleteSelected = useCallback(() => {
     if (appState.selectedElementIds.length === 0) return;
@@ -176,7 +259,6 @@ export const App: React.FC = () => {
     const nextElements = elements
       .filter((el) => !toDelete.has(el.id))
       .map((el) => {
-        // If an arrow was connected to a deleted box, clear the binding
         if (el.type === 'arrow') {
           return {
             ...el,
@@ -196,6 +278,14 @@ export const App: React.FC = () => {
     updateElementsWithHistory(nextElements);
     setAppState((prev) => ({ ...prev, selectedElementIds: [] }));
   }, [appState.selectedElementIds, elements, updateElementsWithHistory]);
+
+  // Clear canvas
+  const handleClearCanvas = useCallback(() => {
+    if (window.confirm('Clear all drawings on the canvas?')) {
+      updateElementsWithHistory([]);
+      setAppState((prev) => ({ ...prev, selectedElementIds: [] }));
+    }
+  }, [updateElementsWithHistory]);
 
   // Update properties on selected elements
   const handleUpdateElement = useCallback(
@@ -295,7 +385,6 @@ export const App: React.FC = () => {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input or textarea
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         return;
@@ -318,6 +407,13 @@ export const App: React.FC = () => {
         return;
       }
 
+      // Duplicate: Ctrl+D / Cmd+D
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        handleDuplicateSelected();
+        return;
+      }
+
       // Delete: Backspace or Delete
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
@@ -334,6 +430,8 @@ export const App: React.FC = () => {
       // Tool shortcuts
       if (e.key === '1' || e.key.toLowerCase() === 'v') {
         setAppState((prev) => ({ ...prev, tool: 'select' }));
+      } else if (e.key.toLowerCase() === 'h') {
+        setAppState((prev) => ({ ...prev, tool: 'pan' }));
       } else if (e.key === '2' || e.key.toLowerCase() === 'r') {
         setAppState((prev) => ({ ...prev, tool: 'box' }));
       } else if (e.key === '3' || e.key.toLowerCase() === 'a') {
@@ -352,7 +450,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleDeleteSelected, elements]);
+  }, [handleUndo, handleRedo, handleDuplicateSelected, handleDeleteSelected, elements]);
 
   // Selected elements array
   const selectedElements = elements.filter((el) =>
@@ -360,7 +458,7 @@ export const App: React.FC = () => {
   );
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${isDarkMode ? 'dark-mode' : ''}`}>
       {/* Top Floating Island Toolbar */}
       <Toolbar
         tool={appState.tool}
@@ -392,6 +490,9 @@ export const App: React.FC = () => {
         onSaveJson={handleSaveJson}
         onLoadJson={handleLoadJson}
         onExportPng={handleExportPng}
+        onClearCanvas={handleClearCanvas}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
       />
 
       {/* Left Properties Panel */}
@@ -410,21 +511,22 @@ export const App: React.FC = () => {
 
       {/* Auto-save Status Indicator (Bottom-left) */}
       <div
+        className="auto-save-badge"
         style={{
           position: 'absolute',
           bottom: '16px',
           left: '16px',
-          backgroundColor: '#ffffff',
-          border: '1px solid #e2e8f0',
+          backgroundColor: isDarkMode ? '#1e1e24' : '#ffffff',
+          border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
           borderRadius: '8px',
           padding: '6px 12px',
           fontSize: '12px',
           fontWeight: 500,
-          color: '#64748b',
+          color: isDarkMode ? '#94a3b8' : '#64748b',
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
           zIndex: 800,
         }}
       >

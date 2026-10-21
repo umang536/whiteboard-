@@ -85,7 +85,7 @@ export interface ResizeHandleInfo {
   height: number;
 }
 
-export type ToolType = 'select' | 'box' | 'arrow';
+export type ToolType = 'select' | 'pan' | 'box' | 'arrow';
 
 export type CanvasPointerMode =
   | 'idle'
@@ -107,6 +107,7 @@ export interface AppState {
   selectedElementIds: string[];
   tool: ToolType;
   editingElementId: string | null;
+  isDarkMode?: boolean;
   defaultStrokeColor: string;
   defaultBackgroundColor: string;
   defaultFillStyle: FillStyle;

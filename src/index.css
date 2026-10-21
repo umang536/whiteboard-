@@ -10,7 +10,22 @@
   --color-primary-hover: #2563eb;
   --color-text: #1e1e1e;
   --color-text-muted: #64748b;
+  --color-hover: #f1f5f9;
+  --color-btn-group: #f1f5f9;
   --shadow-island: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.dark-mode, html.dark {
+  --color-bg: #121212;
+  --color-surface: #1e1e24;
+  --color-border: #334155;
+  --color-primary: #60a5fa;
+  --color-primary-hover: #3b82f6;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --color-hover: #2e3440;
+  --color-btn-group: #141418;
+  --shadow-island: 0 4px 20px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -82,13 +97,19 @@ body, html, #root {
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background-color: #f1f5f9;
+  background-color: var(--color-hover);
 }
 
 .toolbar-btn.active {
   background-color: #e0e7ff;
   color: #4338ca;
   border-color: #c7d2fe;
+}
+
+.dark-mode .toolbar-btn.active, html.dark .toolbar-btn.active {
+  background-color: #312e81;
+  color: #c7d2fe;
+  border-color: #4338ca;
 }
 
 .toolbar-btn:disabled {
@@ -214,7 +235,7 @@ body, html, #root {
 .button-group {
   display: flex;
   gap: 4px;
-  background-color: #f1f5f9;
+  background-color: var(--color-btn-group);
   padding: 3px;
   border-radius: 8px;
 }

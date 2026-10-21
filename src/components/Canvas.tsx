@@ -87,13 +87,30 @@ export const Canvas: React.FC<CanvasProps> = ({
     initialElements: [],
   });
 
-  // Track spacebar for pan mode
+  // Track spacebar for pan mode & Enter for editing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+      if ((e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'INPUT') {
+        return;
+      }
+
+      if (e.code === 'Space') {
         isSpacePressedRef.current = true;
         if (containerRef.current) {
           containerRef.current.style.cursor = 'grab';
+        }
+      }
+
+      // Enter key to edit selected box
+      if (e.key === 'Enter' && appStateRef.current.selectedElementIds.length === 1) {
+        const selectedId = appStateRef.current.selectedElementIds[0];
+        const selectedEl = elementsRef.current.find((el) => el.id === selectedId);
+        if (selectedEl && selectedEl.type === 'box') {
+          e.preventDefault();
+          setEditingBox({
+            id: selectedEl.id,
+            text: (selectedEl as BoxElement).text,
+          });
         }
       }
     };
@@ -101,7 +118,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       if (e.code === 'Space') {
         isSpacePressedRef.current = false;
         if (containerRef.current) {
-          containerRef.current.style.cursor = 'default';
+          containerRef.current.style.cursor =
+            appStateRef.current.tool === 'pan' ? 'grab' : 'default';
         }
       }
     };
@@ -229,8 +247,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       handleTextCommit();
     }
 
-    // Middle click or spacebar for panning
-    if (e.button === 1 || isSpacePressedRef.current) {
+    // Middle click, spacebar, or pan tool for panning
+    if (e.button === 1 || isSpacePressedRef.current || appStateRef.current.tool === 'pan') {
       interactionRef.current = {
         isMouseDown: true,
         startScreenX: e.clientX,
@@ -436,7 +454,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // 1. Hover updates when mouse is UP
     if (!isMouseDown) {
-      if (isSpacePressedRef.current) {
+      if (isSpacePressedRef.current || appStateRef.current.tool === 'pan') {
         if (containerRef.current) {
           containerRef.current.style.cursor = 'grab';
         }

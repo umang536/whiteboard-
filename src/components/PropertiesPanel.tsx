@@ -85,17 +85,29 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   };
 
   const handleBackgroundColorChange = (color: string) => {
-    if (hasSelected) {
-      onUpdateElement({ backgroundColor: color } as Partial<BoxElement>);
+    if (color === 'transparent') {
+      if (hasSelected) {
+        onUpdateElement({ backgroundColor: 'transparent', fillStyle: 'none' } as Partial<BoxElement>);
+      }
+      onUpdateDefaults({ backgroundColor: 'transparent', fillStyle: 'none' });
+    } else {
+      const nextFillStyle = currentFillStyle === 'none' ? 'hachure' : currentFillStyle;
+      if (hasSelected) {
+        onUpdateElement({ backgroundColor: color, fillStyle: nextFillStyle } as Partial<BoxElement>);
+      }
+      onUpdateDefaults({ backgroundColor: color, fillStyle: nextFillStyle });
     }
-    onUpdateDefaults({ backgroundColor: color });
   };
 
   const handleFillStyleChange = (style: FillStyle) => {
-    if (hasSelected) {
-      onUpdateElement({ fillStyle: style } as Partial<BoxElement>);
+    let nextBg = currentBackgroundColor;
+    if (style !== 'none' && currentBackgroundColor === 'transparent') {
+      nextBg = '#a5d8ff';
     }
-    onUpdateDefaults({ fillStyle: style });
+    if (hasSelected) {
+      onUpdateElement({ fillStyle: style, backgroundColor: nextBg } as Partial<BoxElement>);
+    }
+    onUpdateDefaults({ fillStyle: style, backgroundColor: nextBg });
   };
 
   const handleStrokeWidthChange = (width: StrokeWidth) => {

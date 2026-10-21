@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import {
   MousePointer,
+  Hand,
   Square,
   ArrowUpRight,
   Undo,
@@ -10,7 +11,9 @@ import {
   FolderOpen,
   Download,
   Image as ImageIcon,
-  RotateCcw,
+  Trash2,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { ToolType, ExcalidrawElement } from '../types';
 
@@ -28,6 +31,9 @@ interface ToolbarProps {
   onSaveJson: () => void;
   onLoadJson: (elements: ExcalidrawElement[]) => void;
   onExportPng: () => void;
+  onClearCanvas?: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -44,6 +50,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSaveJson,
   onLoadJson,
   onExportPng,
+  onClearCanvas,
+  isDarkMode,
+  onToggleDarkMode,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -72,7 +81,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       }
     };
     reader.readAsText(file);
-    // Reset input so same file can be selected again
     e.target.value = '';
   };
 
@@ -85,16 +93,25 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           className={`toolbar-btn ${tool === 'select' ? 'active' : ''}`}
           onClick={() => onSelectTool('select')}
-          title="Selection tool (1)"
+          title="Selection tool (1 / V)"
         >
           <MousePointer size={18} />
           <span className="shortcut-badge">1</span>
         </button>
 
         <button
+          className={`toolbar-btn ${tool === 'pan' ? 'active' : ''}`}
+          onClick={() => onSelectTool('pan')}
+          title="Hand (Pan) tool (H / Space+Drag)"
+        >
+          <Hand size={18} />
+          <span className="shortcut-badge">H</span>
+        </button>
+
+        <button
           className={`toolbar-btn ${tool === 'box' ? 'active' : ''}`}
           onClick={() => onSelectTool('box')}
-          title="Box / Rectangle tool (2)"
+          title="Box / Rectangle tool (2 / R)"
         >
           <Square size={18} />
           <span className="shortcut-badge">2</span>
@@ -103,7 +120,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           className={`toolbar-btn ${tool === 'arrow' ? 'active' : ''}`}
           onClick={() => onSelectTool('arrow')}
-          title="Arrow tool (3)"
+          title="Arrow connector tool (3 / A)"
         >
           <ArrowUpRight size={18} />
           <span className="shortcut-badge">3</span>
@@ -148,7 +165,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           className="toolbar-btn zoom-percent-btn"
           onClick={onResetZoom}
-          title="Reset zoom to 100% (0)"
+          title="Reset zoom to 100%"
         >
           <span>{zoomPercent}%</span>
         </button>
@@ -164,7 +181,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       <div className="toolbar-divider" />
 
-      {/* Actions Group */}
+      {/* File & Export Actions Group */}
       <div className="toolbar-group">
         <input
           type="file"
@@ -197,6 +214,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         >
           <ImageIcon size={17} />
         </button>
+
+        {onClearCanvas && (
+          <button
+            className="toolbar-btn"
+            onClick={onClearCanvas}
+            title="Clear Canvas"
+          >
+            <Trash2 size={17} />
+          </button>
+        )}
+
+        {onToggleDarkMode && (
+          <button
+            className="toolbar-btn"
+            onClick={onToggleDarkMode}
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+        )}
       </div>
     </div>
   );
